@@ -89,9 +89,11 @@ async def run_userbot():
         set_userbot_client(client, client_wrapper)
         
         # (Re)load plugins for this client instance
-        # We only reload if the client instance has actually changed
-        if not plugin_loader or plugin_loader.client != client:
-            logger.info(f"Plugins: (Re)loading for {'new ' if plugin_loader else ''}client instance...")
+        # We reload if the client instance has changed OR if it just became authorized
+        should_reload = not plugin_loader or plugin_loader.client != client
+        
+        if should_reload and is_authorized:
+            logger.info(f"Plugins: (Re)loading for {'new ' if plugin_loader else ''}authorized client instance...")
             loader = PluginLoader(
                 client=client,
                 db=ether_db.db,
@@ -103,6 +105,8 @@ async def run_userbot():
             
             stats = loader.get_stats()
             logger.info(f"Plugins: LOADED ({stats['total']} modules active)")
+        elif not is_authorized:
+            logger.info("Plugins: Skipping load (Waiting for authorization)")
         
         logger.info("Userbot: RUNNING (Awaiting commands)")
         

@@ -739,13 +739,6 @@ async def bot_login_flow_handler(event):
             except Exception as e:
                 logger.error(f"Channel auto-join failed: {e}")
             
-            # Update plugin loader reference with new client instance
-            if plugin_loader:
-                plugin_loader.client = userbot_client
-                logger.info("Plugin loader reference updated after login")
-            else:
-                logger.warning("Plugin loader not available - waiting for main loop to initialize it")
-            
             await event.reply(
                 "<blockquote>"
                 "✅ <b>Login Successful!</b>\n\n"
@@ -831,13 +824,6 @@ async def bot_login_flow_handler(event):
                     logger.info(f"Successfully joined {joined_count} official channels (2FA)")
             except Exception as e:
                 logger.error(f"Channel auto-join failed (2FA): {e}")
-            
-            # Update plugin loader reference
-            if plugin_loader:
-                plugin_loader.client = userbot_client
-                logger.info("Plugin loader reference updated after 2FA login")
-            else:
-                logger.warning("Plugin loader not available - waiting for main loop to initialize it")
             
             await event.reply(
                 "<blockquote>"
