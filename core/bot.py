@@ -799,11 +799,13 @@ async def bot_login_flow_handler(event):
             del login_state[Config.OWNER_ID]
             
             await asyncio.sleep(1)
+            # Capture session string BEFORE disconnecting so it isn't lost
+            _saved_session = userbot_client.session.save() if userbot_client.session else None
             await userbot_client.disconnect()
             
             if userbot_wrapper:
-                userbot_wrapper._client = None
-                userbot_client = userbot_wrapper.get_client()
+                # Re-initialize with the authenticated session string
+                userbot_client = userbot_wrapper.init_client(_saved_session)
                 await userbot_client.connect()
                 logger.info("Userbot client recreated and reconnected after login")
             else:
@@ -898,11 +900,13 @@ async def bot_login_flow_handler(event):
             del login_state[Config.OWNER_ID]
             
             await asyncio.sleep(1)
+            # Capture session string BEFORE disconnecting so it isn't lost
+            _saved_session = userbot_client.session.save() if userbot_client.session else None
             await userbot_client.disconnect()
             
             if userbot_wrapper:
-                userbot_wrapper._client = None
-                userbot_client = userbot_wrapper.get_client()
+                # Re-initialize with the authenticated session string
+                userbot_client = userbot_wrapper.init_client(_saved_session)
                 await userbot_client.connect()
                 logger.info("Userbot client recreated and reconnected after 2FA login")
             else:
