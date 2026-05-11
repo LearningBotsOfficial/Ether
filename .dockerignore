@@ -1,0 +1,29 @@
+# Version Control
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.venv/
+
+# Session Data & DB
+*.session
+*.session-journal
+sessions/
+media/
+logs/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -868,11 +868,27 @@ async def bot_remove_handler(event):
     
     deleted = False
     
-    if os.path.exists(session_file):
+    # First, attempt to cleanly log out which removes the session on Telegram's end
+    # and safely deletes the local .session file without lock issues.
+    if userbot_client and userbot_client.is_connected():
+        try:
+            await userbot_client.log_out()
+            logger.info("Userbot logged out successfully")
+            deleted = True
+        except Exception as e:
+            logger.error(f"Failed to log out userbot cleanly: {e}")
+            # Fallback: disconnect and manually delete
+            try:
+                await userbot_client.disconnect()
+            except Exception:
+                pass
+    
+    # Fallback to manual file removal if log_out failed or client wasn't connected
+    if not deleted and os.path.exists(session_file):
         try:
             os.remove(session_file)
             deleted = True
-            logger.info(f"Session file removed: {session_file}")
+            logger.info(f"Session file removed manually: {session_file}")
         except Exception as e:
             logger.error(f"Failed to remove session file: {e}")
     

@@ -21,6 +21,12 @@
 
 import asyncio
 import sys
+import os
+
+try:
+    import uvloop
+except ImportError:
+    uvloop = None
 
 from core.user_client import EtherUserClient
 from core.bot import ether_bot, set_userbot_client, set_plugin_loader
@@ -29,6 +35,7 @@ from storage.mongo import ether_db
 from config.config import Config
 from config.channels import validate_integrity
 from utils.logger import setup_logger, get_logger
+from web_service import run_web_service
 
 logger = get_logger("EtherMain")
 
@@ -44,7 +51,6 @@ async def run_userbot():
         logger.warning("Running without database - some features disabled")
     
     # Check session file existence
-    import os
     session_file = f"{Config.SESSION_NAME}.session"
     session_exists = os.path.exists(session_file)
     logger.info(f"Session file check: {session_file} - {'EXISTS' if session_exists else 'NOT FOUND'}")
@@ -136,6 +142,10 @@ async def startup():
     # Start userbot in background - may fail if session is invalid
     userbot_task = asyncio.create_task(run_userbot())
     
+    # Start web service if enabled
+    if Config.WEB_SERVICE:
+        web_task = asyncio.create_task(run_web_service())
+    
     # Wait for bot to finish (it should run indefinitely)
     try:
         await bot_task
@@ -149,6 +159,14 @@ async def startup():
                 await userbot_task
             except asyncio.CancelledError:
                 pass
+                
+        # Cancel web service if running
+        if Config.WEB_SERVICE and 'web_task' in locals() and not web_task.done():
+            web_task.cancel()
+            try:
+                await web_task
+            except asyncio.CancelledError:
+                pass
 
 
 async def shutdown():
@@ -158,6 +176,9 @@ async def shutdown():
 
 
 def main():
+    if Config.WEB_SERVICE and uvloop:
+        uvloop.install()
+            
     try:
         asyncio.run(startup())
     except KeyboardInterrupt:

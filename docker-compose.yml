@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  ether-userbot:
+    build: .
+    container_name: ether-userbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Map the specific directories where data is generated
+      - ./media:/app/media
+      - ./logs:/app/logs
+      # Map session files explicitly to persist logins
+      - ./sessions:/app/sessions
+      # Note: Since the bot creates session files in the root dir by default
+      # you may need to map them explicitly or configure SESSION_DIR in .env
+      - ./:/app/sessions_data # Or bind mount specific .session files
+    # If the app relies heavily on an external MongoDB, 
+    # network settings can be configured here.
+    network_mode: bridge

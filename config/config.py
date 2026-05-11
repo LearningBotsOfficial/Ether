@@ -45,6 +45,10 @@ class Config:
     # Dm Protection Settings
     DM_MAX_WARNS: int = int(os.getenv("DM_MAX_WARNS", "3"))
     
+    # Web Service
+    WEB_SERVICE: bool = os.getenv("WEB_SERVICE", "false").lower() == "true"
+    PORT: int = int(os.getenv("PORT", "8080"))
+    
     @classmethod
     def validate(cls) -> None:
         missing = []
