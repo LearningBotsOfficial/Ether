@@ -984,23 +984,29 @@ class EtherBot:
         self._running = False
     
     async def start(self) -> None:
+        """Connect the bot to Telegram (non-blocking — does NOT run the event loop)."""
         if not Config.BOT_TOKEN:
             logger.warning("No BOT_TOKEN - bot features disabled")
             return
         
         try:
             logger.info(f"Attempting to start bot with token: {self.token[:20]}...")
-            logger.info(f"Connecting to Telegram servers...")
-            
-            # Add timeout to connection
             await asyncio.wait_for(bot.start(bot_token=self.token), timeout=30)
-            
-            logger.info("Bot connected successfully - waiting for messages...")
-            await bot.run_until_disconnected()
+            logger.info("Bot connected successfully")
         except asyncio.TimeoutError:
             logger.error("Bot connection timed out after 30 seconds")
         except Exception as e:
-            logger.error(f"Bot error: {e}", exc_info=True)
+            logger.error(f"Bot start error: {e}", exc_info=True)
+
+    async def get_me(self):
+        return await bot.get_me()
+
+    async def run(self) -> None:
+        """Keep the bot alive — call this after start()."""
+        try:
+            await bot.run_until_disconnected()
+        except Exception as e:
+            logger.error(f"Bot run error: {e}", exc_info=True)
     
     async def stop(self) -> None:
         await bot.disconnect()

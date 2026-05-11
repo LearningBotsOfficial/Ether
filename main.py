@@ -102,7 +102,7 @@ async def init_bot_identity():
     if not Config.BOT_TOKEN:
         return
     
-    # Start bot briefly to fetch identity
+    # Connect the bot and fetch its identity (non-blocking — does NOT run the loop)
     await ether_bot.start()
     me = await ether_bot.get_me()
     Config.BOT_USERNAME = me.username
@@ -114,9 +114,9 @@ async def run_bot():
     if not Config.BOT_TOKEN:
         return
     
-    # Bot is already started by init_bot_identity, just keep it alive
+    # Keep the bot alive — ether_bot.start() was already called in init_bot_identity
     logger.info("Bot UI: RUNNING")
-    await ether_bot.run_until_disconnected()
+    await ether_bot.run()
 
 
 async def startup():
