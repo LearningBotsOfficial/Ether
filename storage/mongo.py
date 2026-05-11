@@ -37,26 +37,57 @@ class EtherMongo:
     
     async def connect(self) -> bool:
         if not Config.MONGO_URI:
-            logger.warning("MongoDB URI not configured, running without DB")
+            logger.warning("Database: URI MISSING (Running without persistence)")
             return False
         
         try:
             self.client = AsyncMongoClient(
                 Config.MONGO_URI,
-                serverSelectionTimeoutMS=5000
+                serverSelectionTimeoutMS=5000,
+                retryWrites=True,
+                maxPoolSize=50
             )
             
             # Verify connection
             await self.client.admin.command("ping")
             
             self.db = self.client[Config.DB_NAME]
-            logger.info(f"Connected to MongoDB ({Config.DB_NAME})")
+            logger.info(f"Database: CONNECTED ({Config.DB_NAME})")
+            
+            # Initialize Indexes for Performance
+            await self.ensure_indexes()
+            
             return True
             
         except Exception as e:
-            logger.error(f"MongoDB connection failed: {e}")
+            logger.error(f"Database: CONNECTION FAILED ({e})")
             self.client = None
             self.db = None
+            return False
+
+    async def ensure_indexes(self):
+        """Creates indexes to ensure lightning-fast lookups."""
+        if not self.db:
+            return
+        try:
+            # Autoreplies: Trigger lookup
+            await self.db.autoreplies.create_index("trigger", unique=True)
+            # Shortcuts: Name lookup
+            await self.db.shortcuts.create_index("name", unique=True)
+            # DM Shield: User ID lookup
+            await self.db.dm_shield.create_index("user_id", unique=True)
+            logger.info("Database: INDEXES SYNCHRONIZED")
+        except Exception as e:
+            logger.error(f"Database: INDEX ERROR ({e})")
+
+    async def is_healthy(self) -> bool:
+        """Runtime health check for the DB connection."""
+        if not self.client:
+            return False
+        try:
+            await self.client.admin.command("ping")
+            return True
+        except Exception:
             return False
     
     async def close(self) -> None:
@@ -89,6 +120,10 @@ class EtherMongo:
     @property
     def messages(self):
         return self.db["messages"] if self.db else None
+
+    @property
+    def autoreplies(self):
+        return self.db["autoreplies"] if self.db else None
  
 # Global instance
 ether_db = EtherMongo()
