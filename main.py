@@ -1,28 +1,9 @@
-# =============================================================================
-#  Ether Userbot System
-#
-#  Project Name:  Ether
-#  Author:        LearningBotsOfficial
-#
-#  Repository:    https://github.com/LearningBotsOfficial/Ether
-#
-#  Support:       https://t.me/Ether_Support
-#  Channel:       https://t.me/Ether_Update
-#
-#  License:       Open Source (Keep Credits)
-#
-#  IMPORTANT:
-#    • If you copy, fork, or reuse this project or any part of it,
-#      you MUST retain original credits.
-#    • Proper attribution to Ether project is required.
-#
-#  Thank you for respecting open-source development.
-# =============================================================================
-
 import asyncio
 import sys
 import time
 import os
+import signal
+import psutil
 
 try:
     import uvloop # type: ignore
@@ -41,10 +22,44 @@ from utils.task_helper import safe_run
 
 logger = get_logger("EtherMain")
 
-# Global loader for plugin reloading after login
+# Global variables
 plugin_loader = None
 Config.START_TIME = time.time()
+LOCK_FILE = "ether.lock"
+shutdown_event = asyncio.Event()
 
+def check_instance():
+    """Prevent multiple instances from running simultaneously."""
+    if os.path.exists(LOCK_FILE):
+        try:
+            with open(LOCK_FILE, "r") as f:
+                old_pid = int(f.read().strip())
+            
+            if psutil.pid_exists(old_pid):
+                # Check if it's actually an Ether process (optional but safer)
+                proc = psutil.Process(old_pid)
+                if old_pid != os.getpid():
+                    logger.critical(f"System: MULTI-INSTANCE DETECTED (PID: {old_pid} is already running)")
+                    print(f"\n[!] Ether is already running (PID: {old_pid}).")
+                    print("[!] Please stop the existing instance before starting a new one.\n")
+                    sys.exit(1)
+        except (ValueError, psutil.NoSuchProcess):
+            # Stale lock file
+            os.remove(LOCK_FILE)
+
+def acquire_lock():
+    with open(LOCK_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    logger.info(f"System: Lock acquired (PID: {os.getpid()})")
+
+def release_lock():
+    if os.path.exists(LOCK_FILE):
+        os.remove(LOCK_FILE)
+        logger.info("System: Lock released")
+
+def signal_handler(sig, frame):
+    logger.warning(f"System: Received signal {sig}, initiating graceful shutdown...")
+    shutdown_event.set()
 
 async def run_userbot():
     global plugin_loader
@@ -57,7 +72,7 @@ async def run_userbot():
     else:
         logger.info(f"Database: CONNECTED ({Config.DB_NAME})")
     
-    while True:
+    while not shutdown_event.is_set():
         # Initialize/get the current client
         client = client_wrapper.get_client()
         
@@ -74,8 +89,24 @@ async def run_userbot():
         
         if not is_authorized:
             logger.warning("Session: UNAUTHORIZED (Waiting for /login via Bot UI)")
+            # If not authorized, don't run the client loop. 
+            # Instead, wait for a few seconds and check again.
+            try:
+                # Wait for shutdown or just sleep
+                done, pending = await asyncio.wait(
+                    [asyncio.sleep(30), shutdown_event.wait()],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in pending:
+                    task.cancel()
+                
+                if shutdown_event.is_set():
+                    break
+                continue # Re-check status
+            except Exception:
+                await asyncio.sleep(5)
+                continue
         else:
-            # Auto-fetch user details for authorized sessions
             try:
                 me = await client.get_me()
                 if me:
@@ -86,11 +117,8 @@ async def run_userbot():
             except Exception as e:
                 logger.error(f"Failed to fetch user details: {e}")
         
-        # Share the current client with the Bot UI
         set_userbot_client(client, client_wrapper)
         
-        # (Re)load plugins for this client instance
-        # We reload if the client instance has changed OR if it just became authorized
         should_reload = not plugin_loader or plugin_loader.client != client
         
         if should_reload and is_authorized:
@@ -106,47 +134,64 @@ async def run_userbot():
             
             stats = loader.get_stats()
             logger.info(f"Plugins: LOADED ({stats['total']} modules active)")
-        elif not is_authorized:
-            logger.info("Plugins: Skipping load (Waiting for authorization)")
         
         logger.info("Userbot: RUNNING (Awaiting commands)")
         
         try:
-            # This blocks until the client is disconnected (e.g., by the login flow in bot.py)
-            await client.run_until_disconnected()
+            # Wait for disconnection or shutdown signal
+            done, pending = await asyncio.wait(
+                [client.run_until_disconnected(), shutdown_event.wait()],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            for task in pending:
+                task.cancel()
+                
+            if shutdown_event.is_set():
+                logger.info("Userbot: Shutdown signal received, exiting loop...")
+                break
+                
         except Exception as e:
-            logger.error(f"Userbot execution error: {e}")
+            # If we get "The key is not registered in the system", it means the session was logged out
+            if "The key is not registered" in str(e):
+                logger.error("Userbot: Session has been logged out or is invalid.")
+                # We can't do much except re-check status in the next loop iteration
+            else:
+                logger.error(f"Userbot execution error: {e}")
             await asyncio.sleep(5)
         
-        # If we reach here, the client was disconnected. 
-        # The loop will restart, get the new client (if any), and resume.
         logger.info("Userbot: Loop exited. Re-evaluating client state...")
         await asyncio.sleep(1)
-
 
 async def init_bot_identity():
     if not Config.BOT_TOKEN:
         return
-    
-    # Connect the bot and fetch its identity (non-blocking — does NOT run the loop)
     await ether_bot.start()
     me = await ether_bot.get_me()
     Config.BOT_USERNAME = me.username
     Config.BOT_MENTION = f"@{me.username}"
     logger.info(f"Bot UI: IDENTITY FETCHED (@{me.username})")
 
-
 async def run_bot():
     if not Config.BOT_TOKEN:
         return
-    
-    # Keep the bot alive — ether_bot.start() was already called in init_bot_identity
     logger.info("Bot UI: RUNNING")
-    await ether_bot.run()
-
+    
+    # We use wait to handle shutdown event alongside bot.run()
+    try:
+        done, pending = await asyncio.wait(
+            [ether_bot.run(), shutdown_event.wait()],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
+    except Exception as e:
+        logger.error(f"Bot UI error: {e}")
 
 async def startup():
     setup_logger()
+    check_instance()
+    acquire_lock()
     
     print("\n" + "=" * 60)
     print("    ______ _   _                      ")
@@ -160,34 +205,26 @@ async def startup():
     
     logger.info("Initializing Ether Hybrid System...")
     
-    # Validate channels file integrity
     if not validate_integrity():
         logger.critical("CORE INTEGRITY VIOLATION DETECTED")
-        print("\n" + "!" * 60)
-        print(" SECURITY ALERT: core/channels.py has been modified.")
-        print(" Bot startup aborted to protect system integrity.")
-        print("!" * 60 + "\n")
+        release_lock()
         sys.exit(1)
     
     logger.info("Core integrity check: PASSED")
     
     tasks = []
     
-    # 1. Start web service FIRST so Render sees an open port immediately
     if Config.WEB_SERVICE:
         web_task = safe_run(run_web_service(), name="WebService")
         tasks.append(web_task)
-        # Give it a moment to bind the port before proceeding
         await asyncio.sleep(1)
     
-    # 2. Fetch bot identity (sequential, fast)
     if Config.BOT_TOKEN:
         try:
             await init_bot_identity()
         except Exception as e:
             logger.error(f"Bot Identity: FAILED ({e})")
     
-    # 3. Start userbot and bot UI as concurrent tasks
     userbot_task = safe_run(run_userbot(), name="UserbotCore")
     tasks.append(userbot_task)
     
@@ -195,46 +232,71 @@ async def startup():
         bot_task = safe_run(run_bot(), name="BotUI")
         tasks.append(bot_task)
     
-    # 4. Keep alive — wait for all tasks (any failure is logged, not fatal)
-    try:
-        await asyncio.gather(*tasks, return_exceptions=True)
-    except Exception as e:
-        logger.error(f"System: CRITICAL FAILURE ({e})")
-    finally:
-        # Cleanup all remaining tasks on exit
-        for task in tasks:
-            if not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
+    # Wait until shutdown signal
+    await shutdown_event.wait()
+    logger.info("System: Shutdown initiated, cleaning up tasks...")
+    
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 async def shutdown():
-    logger.info("System: SHUTTING DOWN")
-    await ether_bot.stop()
-    await ether_db.close()
+    logger.info("System: PERFOMING FINAL CLEANUP")
+    
+    # Disconnect Userbot
+    try:
+        client_wrapper = EtherUserClient()
+        await client_wrapper.disconnect()
+    except Exception:
+        pass
+        
+    # Stop Bot UI
+    try:
+        await ether_bot.stop()
+    except Exception:
+        pass
+        
+    # Close DB
+    try:
+        await ether_db.close()
+    except Exception:
+        pass
+        
+    release_lock()
     logger.info("System: OFFLINE")
-
 
 def main():
     if Config.WEB_SERVICE and uvloop:
         uvloop.install()
+    
+    # Setup signal handlers
+    if sys.platform != "win32":
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, signal_handler)
+    else:
+        # On Windows, signal handling is limited
+        signal.signal(signal.SIGINT, signal_handler)
             
     try:
         asyncio.run(startup())
     except KeyboardInterrupt:
-        logger.info("Stopped by user")
+        pass
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
     finally:
         try:
+            # We need a new loop for shutdown if the previous one is closed
             asyncio.run(shutdown())
-        except Exception:
-            pass
-
+        except Exception as e:
+            logger.error(f"Shutdown error: {e}")
+            release_lock() # Emergency release
+        
+        sys.exit(0)
 
 if __name__ == "__main__":
+    main()
     main()
