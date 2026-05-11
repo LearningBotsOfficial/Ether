@@ -25,20 +25,14 @@ import re
 from services.shortcut_service import ShortcutService
 from utils.parser import parse_links
 from utils.logger import get_logger
+from config.config import Config
 from core.bot import bot, SHORTCUT_DATA
 
 logger = get_logger("EtherShortcut")
 
 
 def setup(ether, db, owner_id):
-    
     shortcut_service = ShortcutService(db)
-    bot_username = None
-    try:
-        from config.config import Config
-        bot_username = Config.BOT_USERNAME
-    except:
-        pass
 
 # ============================================
 # Load Shortcuts Data
@@ -261,6 +255,7 @@ def setup(ether, db, owner_id):
         async def send_shortcut_message(text: str, target_chat=None) -> None:
             try:
                 chat_id = target_chat or event.chat_id
+                bot_username = Config.BOT_USERNAME
                 
                 if bot_username and buttons:
                     

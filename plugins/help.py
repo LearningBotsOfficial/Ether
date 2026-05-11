@@ -29,20 +29,13 @@ logger = get_logger("EtherHelp")
 
 def setup(ether, db, owner_id):
     
-    bot_username = Config.BOT_USERNAME or ""
-
-# ============================================
-# Help Command
-# ============================================
-    
     @ether.on(events.NewMessage(pattern=r"^\.help$", outgoing=True))
     async def help_handler(event):
-
         user = event.sender_id
-
         if user != Config.OWNER_ID:
             return
         
+        bot_username = Config.BOT_USERNAME
         if not bot_username:
             await event.reply(
                 "<blockquote>"

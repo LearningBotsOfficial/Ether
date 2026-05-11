@@ -75,7 +75,10 @@ async def run_userbot():
         logger.warning("Session not authorized. Use /login command to authenticate.")
         logger.info("Userbot running in unauthenticated mode - login required")
     else:
-        logger.info("Userbot session authorized - ready to use commands")
+        # Auto-fetch user details
+        client = client_wrapper.get_client()
+        me = await client.get_me()
+        logger.info(f"Userbot session authorized: {me.first_name} (@{me.username})")
     
     # Get raw client for plugin loading
     client = client_wrapper.get_client()
@@ -110,6 +113,11 @@ async def run_bot():
     
     logger.info("Bot Ui starting...")
     await ether_bot.start()
+    
+    # Auto-fetch bot details
+    me = await ether_bot.get_me()
+    Config.BOT_USERNAME = me.username
+    logger.info(f"Bot started as @{me.username} ({me.first_name})")
 
 
 async def startup():

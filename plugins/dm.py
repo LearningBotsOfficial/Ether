@@ -58,7 +58,6 @@ def setup(ether, db, owner_id):
     
     dm_service = DMService(db)
     max_warns = Config.DM_MAX_WARNS
-    bot_username = Config.BOT_USERNAME
     
     async def load_welcome_data():
         try:
@@ -282,6 +281,7 @@ def setup(ether, db, owner_id):
         
         async def send_welcome(text: str) -> None:
             try:
+                bot_username = Config.BOT_USERNAME
                 if bot_username and welcome_buttons:
                     
                     WELCOME_DATA["text"] = text

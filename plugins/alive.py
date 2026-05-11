@@ -27,28 +27,21 @@ logger = get_logger("EtherAlive")
 
 
 def setup(ether, db, owner_id):
-
-    bot_username = Config.BOT_USERNAME or ""
-
     ALIVE_IMAGE = "assets/ether_logo.png"
 
     @ether.on(events.NewMessage(pattern=r"^\.alive$", outgoing=True))
     async def alive_handler(event):
-
         if event.sender_id != owner_id:
             return
 
+        bot_username = Config.BOT_USERNAME
         if not bot_username:
-            await event.reply("❌ BOT_USERNAME not set.")
+            await event.reply("❌ BOT_USERNAME not fetched yet. Please wait.")
             return
 
         try:
             await event.delete()
-
-            results = await ether.inline_query(
-                bot_username,
-                "alive"
-            )
+            results = await ether.inline_query(bot_username, "alive")
 
             if results:
                 await results[0].click(event.chat_id)

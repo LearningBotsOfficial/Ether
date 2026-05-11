@@ -32,7 +32,7 @@ class Config:
     OWNER_ID: int = int(os.getenv("OWNER_ID", 0))
     
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
-    BOT_USERNAME: str = os.getenv("BOT_USERNAME", "")  # Without @, e.g. "Etheruserbot"
+    BOT_USERNAME: str = os.getenv("BOT_USERNAME", "")  # Auto-fetched if not set
     
     SESSION_NAME: str = os.getenv("SESSION_NAME", "etheruserbot")
     SESSION_DIR: str = os.getenv("SESSION_DIR", "sessions")
