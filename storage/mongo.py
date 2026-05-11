@@ -19,7 +19,7 @@
 #  Thank you for respecting open-source development.
 # =============================================================================
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from config.config import Config
 from utils.logger import get_logger
 
@@ -32,7 +32,7 @@ logger = get_logger("EtherMongo")
 class EtherMongo:
     
     def __init__(self):
-        self.client: AsyncIOMotorClient = None
+        self.client: AsyncMongoClient = None
         self.db = None
     
     async def connect(self) -> bool:
@@ -41,7 +41,7 @@ class EtherMongo:
             return False
         
         try:
-            self.client = AsyncIOMotorClient(
+            self.client = AsyncMongoClient(
                 Config.MONGO_URI,
                 serverSelectionTimeoutMS=5000
             )
@@ -61,7 +61,7 @@ class EtherMongo:
     
     async def close(self) -> None:
         if self.client:
-            self.client.close()
+            await self.client.close()
             logger.info("MongoDB connection closed")
     
     # Collection accessors
