@@ -76,6 +76,8 @@ class EtherMongo:
             await self.db.shortcuts.create_index("name", unique=True)
             # DM Shield: User ID lookup
             await self.db.dm_shield.create_index("user_id", unique=True)
+            # Sessions: Name lookup (fast session bootstrap on startup)
+            await self.db.sessions.create_index("name", unique=True)
             logger.info("Database: INDEXES SYNCHRONIZED")
         except Exception as e:
             logger.error(f"Database: INDEX ERROR ({e})")
