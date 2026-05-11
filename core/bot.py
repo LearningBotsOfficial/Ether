@@ -406,16 +406,20 @@ async def cb_tagall(event):
         "<b>TagAll</b>\n\n"
         "Mention group members in small batches with delay to avoid spam and limits.\n\n"
         
-        "<b>Command:</b>\n"
-        "<code>.tagall</code>\n\n"
+        "<b>Commands:</b>\n"
+        "• <code>.tagall &lt;msg&gt;</code>\n"
+        "• <code>.gmtag &lt;msg&gt;</code> (Morning greeting)\n"
+        "• <code>.gntag &lt;msg&gt;</code> (Night greeting)\n\n"
         
-        "<b>Example:</b>\n"
-        "<code>.tagall Hello everyone!</code>\n\n"
+        "<b>Examples:</b>\n"
+        "• <code>.tagall Wake up!</code>\n"
+        "• <code>.gmtag</code> (Uses 'Good Morning!')\n"
+        "• <code>.gntag sleep tight</code>\n\n"
         
         "<b>Tips:</b>\n"
         "• Works only in groups\n"
         "• Skips bots & deleted users\n"
-        "• Uses safe limits to protect your account"
+        "• Use <code>.&lt;cmd&gt; stop</code> to cancel process"
         "</blockquote>",
         
         buttons=[[Button.inline("Back", b"help_back")]]

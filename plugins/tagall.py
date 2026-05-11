@@ -21,26 +21,53 @@
 
 from telethon import events, errors
 import asyncio
+import random
 from utils.logger import get_logger
 
 logger = get_logger("EtherTagAll")
 
-# Track active tagall tasks to allow stopping them
-# Format: {chat_id: True/False}
-ACTIVE_TASKS = {}
+# Process tracking is now handled via MongoDB
+
+GM_GREETINGS = [
+    "Good Morning! Have a blessed day.",
+    "Subah bakhair! Kaise hain aap?",
+    "Morning! Chai nasta hua?",
+    "Good Morning! Hope you slept well.",
+    "Rise and shine! Utho jaldi.",
+    "Assalam-o-Alaikum, Good Morning!",
+    "Good morning! Aaj ka kya plan hai?",
+    "Have a productive morning!",
+    "Subha ho gayi! Have a great one.",
+    "Good Morning Ji! Sab thik?"
+]
+
+GN_GREETINGS = [
+    "Good Night! Sleep tight.",
+    "Shab bakhair! Milte hain kal.",
+    "Good Night! Sweet dreams.",
+    "So jao, thak gaye hoge aaj.",
+    "Good night! Subah jaldi uthna hai.",
+    "Allah Hafiz, Good Night!",
+    "Nighty night! Take rest.",
+    "You did well today, Good Night!",
+    "Kal milte hain, so jao ab.",
+    "Good Night Ji! Khayal rakhiyega."
+]
 
 def setup(ether, db, owner_id):
 
-    BATCH_SIZE = 5          # users per message
-    DELAY = 2               # seconds between batches
-    MAX_USERS = 250         # safety limit
+    BATCH_SIZE = 1          # 1 user per message
+    DELAY = 1.5             # slight adjustment for single tags
+    
+    # MongoDB collection for process tracking
+    tag_col = db["tag_tasks"]
 
 # ============================================
-# Tagall Command
+# Universal Tag Handler
 # ============================================
 
-    @ether.on(events.NewMessage(pattern=r"^\.tagall(?:(?:\s+)(.+))?$", outgoing=True))
-    async def tagall_handler(event):
+    @ether.on(events.NewMessage(pattern=r"^\.(tagall|gmtag|gntag)(?:(?:\s+)(.+))?$", outgoing=True))
+    async def universal_tag_handler(event):
         if event.sender_id != owner_id:
             return
         
@@ -48,35 +75,47 @@ def setup(ether, db, owner_id):
             await event.edit("<blockquote><b>Command Error:</b> This command works only in groups.</blockquote>")
             return
 
-        arg = event.pattern_match.group(1)
+        cmd = event.pattern_match.group(1).lower()
+        arg = event.pattern_match.group(2)
+        chat_id = event.chat_id
         
         # Check for stop command
         if arg and arg.lower() == "stop":
-            if event.chat_id in ACTIVE_TASKS:
-                ACTIVE_TASKS[event.chat_id] = False
-                await event.edit("<blockquote><b>Action Success:</b> Stopping TagAll...</blockquote>")
-            else:
-                await event.edit("<blockquote><b>Command Error:</b> No active TagAll in this chat.</blockquote>")
+            tag_col.update_one({"chat_id": chat_id}, {"$set": {"active": False}})
+            await event.edit(f"<blockquote><b>Action Success:</b> Stopping {cmd.capitalize()}...</blockquote>")
             return
 
-        # Start TagAll
-        message = arg or "Hey everyone!"
+        # Determine mode
+        use_random = not bool(arg)
+        if cmd == "gmtag":
+            label = "Morning Tag"
+            message = arg
+        elif cmd == "gntag":
+            label = "Night Tag"
+            message = arg
+        else:
+            label = "TagAll"
+            message = arg or "Hey everyone!"
+            use_random = False
         
-        if event.chat_id in ACTIVE_TASKS and ACTIVE_TASKS[event.chat_id]:
-            await event.edit("<blockquote><b>Process Error:</b> A TagAll is already running in this chat.</blockquote>")
+        # Check active status in DB
+        current = tag_col.find_one({"chat_id": chat_id})
+        if current and current.get("active"):
+            await event.edit(f"<blockquote><b>Process Error:</b> A tagging process is already running.</blockquote>")
             return
 
         await event.delete()
         status_msg = await ether.send_message(
-            event.chat_id, 
-            "<blockquote><b>Starting TagAll...</b>\n<i>Use <code>.tagall stop</code> to cancel.</i></blockquote>"
+            chat_id, 
+            f"<blockquote><b>Starting {label}...</b>\n<i>Use <code>.{cmd} stop</code> to cancel.</i></blockquote>"
         )
         
-        ACTIVE_TASKS[event.chat_id] = True
+        # Set active in DB
+        tag_col.update_one({"chat_id": chat_id}, {"$set": {"active": True}}, upsert=True)
         
         try:
             users = []
-            async for user in ether.iter_participants(event.chat_id):
+            async for user in ether.iter_participants(chat_id):
                 if user.bot or user.deleted:
                     continue
                 users.append(user)
@@ -85,25 +124,38 @@ def setup(ether, db, owner_id):
                 await status_msg.edit("<blockquote><b>Process Error:</b> No eligible users found.</blockquote>")
                 return
 
-            users = users[:MAX_USERS]
             total = len(users)
             sent = 0
             
             for i in range(0, total, BATCH_SIZE):
-                # Check if task was cancelled
-                if not ACTIVE_TASKS.get(event.chat_id):
+                # Check DB for cancellation
+                current_status = tag_col.find_one({"chat_id": chat_id})
+                if not current_status or not current_status.get("active"):
                     break
                 
                 batch = users[i:i + BATCH_SIZE]
-                mentions = []
-                for user in batch:
-                    name = user.first_name or "User"
-                    mentions.append(f"[{name}](tg://user?id={user.id})")
                 
-                tag_text = f"<b>Broadcast:</b> {message}\n\n" + " ".join(mentions)
+                if use_random:
+                    greetings = GM_GREETINGS if cmd == "gmtag" else GN_GREETINGS
+                    greeting = random.choice(greetings)
+                    user = batch[0]
+                    name = user.first_name or "User"
+                    tag_text = (
+                        f"<blockquote><b>{label} Protocol</b>\n"
+                        f"{greeting}\n\n"
+                        f"Target: [{name}](tg://user?id={user.id})</blockquote>"
+                    )
+                else:
+                    user = batch[0]
+                    name = user.first_name or "User"
+                    tag_text = (
+                        f"<blockquote><b>{label} Protocol</b>\n"
+                        f"{message}\n\n"
+                        f"Target: [{name}](tg://user?id={user.id})</blockquote>"
+                    )
                 
                 try:
-                    await ether.send_message(event.chat_id, tag_text)
+                    await ether.send_message(chat_id, tag_text)
                     sent += len(batch)
                 except errors.FloodWaitError as e:
                     logger.warning(f"FloodWait: Sleeping for {e.seconds}s")
@@ -113,14 +165,17 @@ def setup(ether, db, owner_id):
                 
                 await asyncio.sleep(DELAY)
             
-            result_text = f"<blockquote><b>TagAll Completed</b>\nTagged: {sent} users</blockquote>"
-            if not ACTIVE_TASKS.get(event.chat_id):
-                result_text = f"<blockquote><b>TagAll Stopped</b>\nTagged: {sent} users</blockquote>"
+            result_text = f"<blockquote><b>{label} Completed</b>\nTagged: {sent} users</blockquote>"
             
-            await ether.send_message(event.chat_id, result_text)
+            # Check if it was stopped
+            final_status = tag_col.find_one({"chat_id": chat_id})
+            if not final_status or not final_status.get("active"):
+                result_text = f"<blockquote><b>{label} Stopped</b>\nTagged: {sent} users</blockquote>"
+            
+            await ether.send_message(chat_id, result_text)
             
         finally:
-            ACTIVE_TASKS[event.chat_id] = False
+            tag_col.update_one({"chat_id": chat_id}, {"$set": {"active": False}})
             try:
                 await status_msg.delete()
             except:
