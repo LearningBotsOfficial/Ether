@@ -55,21 +55,22 @@ def setup(ether, db, owner_id):
         now = time.time()
         
         # --- PART B: Link/Media Shield for Unknown Users ---
-        shield_settings = await shield_service.get(user_id)
+        shield_settings = await shield_service.get(owner_id)
         
-        text = event.message.message or ""
         is_spammy = False
         reason = ""
+        if shield_settings.get("enabled"):
+            text = event.message.message or ""
 
-        if shield_service.has_link(text):
-            is_spammy = True
-            reason = "Link detected"
-        elif shield_service.has_username(text):
-            is_spammy = True
-            reason = "Username mention"
-        elif event.message.media and not (user_data and user_data.get("message_count", 0) > 2):
-            is_spammy = True
-            reason = "Unauthorized media"
+            if shield_settings.get("link") and shield_service.has_link(text):
+                is_spammy = True
+                reason = "Link detected"
+            elif shield_settings.get("username") and shield_service.has_username(text):
+                is_spammy = True
+                reason = "Username mention"
+            elif event.message.media and not (user_data and user_data.get("message_count", 0) > 2):
+                is_spammy = True
+                reason = "Unauthorized media"
 
         if is_spammy:
             try:

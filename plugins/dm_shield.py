@@ -84,12 +84,16 @@ def setup(ether, db, owner_id):
         if event.sender_id != owner_id:
             return
     
-        if not event.is_reply:
-            await event.reply("<blockquote><b>Command Error:</b> Reply to a user DM to allow them.</blockquote>")
+        user_id = None
+        if event.is_reply:
+            reply = await event.get_reply_message()
+            user_id = reply.sender_id
+        elif event.is_private:
+            user_id = event.chat_id
+            
+        if not user_id or user_id == owner_id:
+            await event.reply("<blockquote><b>Warning:</b> To allow a user, reply to their message or use this command in their DM.</blockquote>")
             return
-    
-        reply = await event.get_reply_message()
-        user_id = reply.sender_id
     
         settings = await shield.get(owner_id)
     
@@ -115,12 +119,16 @@ def setup(ether, db, owner_id):
         if event.sender_id != owner_id:
             return
     
-        if not event.is_reply:
-            await event.reply("<blockquote><b>Command Error:</b> Reply to a user DM to disallow them.</blockquote>")
+        user_id = None
+        if event.is_reply:
+            reply = await event.get_reply_message()
+            user_id = reply.sender_id
+        elif event.is_private:
+            user_id = event.chat_id
+            
+        if not user_id or user_id == owner_id:
+            await event.reply("<blockquote><b>Warning:</b> To disallow a user, reply to their message or use this command in their DM.</blockquote>")
             return
-    
-        reply = await event.get_reply_message()
-        user_id = reply.sender_id
     
         settings = await shield.get(owner_id)
     
@@ -161,6 +169,8 @@ def setup(ether, db, owner_id):
             "<b>Commands:</b>\n"
             "<code>.shield on</code>\n"
             "<code>.shield off</code>\n"
+            "<code>.shield allow</code>\n"
+            "<code>.shield disallow</code>\n"
             "<code>.shield link</code>\n"
             "<code>.shield user</code>\n"
             "<code>.shield status</code>"
