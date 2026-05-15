@@ -172,12 +172,12 @@ class DMService:
     
     async def get_welcome(self, owner_id: int) -> Dict[str, Any]:
         if self.config is None:
-            return {"text": "", "image": None, "buttons": None}
+            return {"text": "", "image": None, "buttons": None, "media_type": None}
         
         result = await self.config.find_one({"owner_id": owner_id})
-        return result or {"text": "", "image": None, "buttons": None}
+        return result or {"text": "", "image": None, "buttons": None, "media_type": None}
     
-    async def set_welcome(self, owner_id: int, text: str, image: Optional[str] = None, buttons: Optional[List[Dict[str, str]]] = None) -> None:
+    async def set_welcome(self, owner_id: int, text: str, image: Optional[str] = None, buttons: Optional[List[Dict[str, str]]] = None, media_type: Optional[str] = None) -> None:
         if self.config is None:
             return
         
@@ -191,6 +191,11 @@ class DMService:
             data["buttons"] = buttons
         else:
             data["buttons"] = None
+        
+        if media_type:
+            data["media_type"] = media_type
+        else:
+            data["media_type"] = "photo"
         
         await self.config.update_one(
             {"owner_id": owner_id},

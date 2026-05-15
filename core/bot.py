@@ -73,7 +73,8 @@ HELP_DATA = {
 WELCOME_DATA = {
     "text": None,
     "image": None,
-    "buttons": None
+    "buttons": None,
+    "media_type": "photo"
 }
 
 SHORTCUT_DATA = {}
@@ -163,12 +164,29 @@ async def inline_help(event):
                 
                 
                 if WELCOME_DATA["image"]:
-                    result = builder.photo(
-                        file=WELCOME_DATA["image"],
-                        id="welcome_msg",
-                        text=WELCOME_DATA["text"],
-                        buttons=buttons
-                    )
+                    media_type = WELCOME_DATA.get("media_type", "photo")
+                    
+                    if media_type == "video":
+                        result = builder.video(
+                            file=WELCOME_DATA["image"],
+                            id="welcome_msg",
+                            text=WELCOME_DATA["text"],
+                            buttons=buttons
+                        )
+                    elif media_type == "gif":
+                        result = builder.gif(
+                            file=WELCOME_DATA["image"],
+                            id="welcome_msg",
+                            text=WELCOME_DATA["text"],
+                            buttons=buttons
+                        )
+                    else: # Default to photo
+                        result = builder.photo(
+                            file=WELCOME_DATA["image"],
+                            id="welcome_msg",
+                            text=WELCOME_DATA["text"],
+                            buttons=buttons
+                        )
                 else:
                     result = builder.article(
                         id="welcome_msg",

@@ -63,6 +63,7 @@ def setup(ether, db, owner_id):
                 WELCOME_DATA["text"] = welcome_config["text"]
                 WELCOME_DATA["image"] = welcome_config.get("image")
                 WELCOME_DATA["buttons"] = welcome_config.get("buttons")
+                WELCOME_DATA["media_type"] = welcome_config.get("media_type", "photo")
         except Exception as e:
             logger.error(f"Failed to load welcome data: {e}")
     
@@ -129,11 +130,32 @@ def setup(ether, db, owner_id):
         msg = await event.get_reply_message()
         
         image_path = None
+        media_type = "photo"
         if msg.photo:
             try:
                 image_path = await msg.download_media(file="media/welcome.jpg")
+                media_type = "photo"
             except Exception as e:
                 logger.error(f"Failed to download welcome image: {e}")
+        elif msg.video:
+            try:
+                image_path = await msg.download_media(file="media/welcome.mp4")
+                media_type = "video"
+            except Exception as e:
+                logger.error(f"Failed to download welcome video: {e}")
+        elif msg.gif:
+            try:
+                image_path = await msg.download_media(file="media/welcome.mp4")
+                media_type = "gif"
+            except Exception as e:
+                logger.error(f"Failed to download welcome gif: {e}")
+        elif msg.document and any(msg.document.mime_type.startswith(t) for t in ['image/', 'video/']):
+            try:
+                ext = ".jpg" if msg.document.mime_type.startswith('image/') else ".mp4"
+                image_path = await msg.download_media(file=f"media/welcome{ext}")
+                media_type = "photo" if ext == ".jpg" else "video"
+            except Exception as e:
+                logger.error(f"Failed to download welcome document: {e}")
         
         from telethon.extensions import html
         if msg.entities:
@@ -197,15 +219,16 @@ def setup(ether, db, owner_id):
                     buttons = button_rows
         
         try:
-            await dm_service.set_welcome(owner_id, parsed_text, image_path, buttons)
+            await dm_service.set_welcome(owner_id, parsed_text, image_path, buttons, media_type)
             
             WELCOME_DATA["text"] = parsed_text
             WELCOME_DATA["image"] = image_path
             WELCOME_DATA["buttons"] = buttons
+            WELCOME_DATA["media_type"] = media_type
             
             response = "<blockquote>✅ Welcome message saved."
             if image_path:
-                response += "\n📷 Image included."
+                response += f"\n📷 {media_type.capitalize()} included."
             if buttons:
                 response += f"\n🔘 {len(buttons)} button rows included."
             response += "</blockquote>"
@@ -229,6 +252,7 @@ def setup(ether, db, owner_id):
         WELCOME_DATA["text"] = None
         WELCOME_DATA["image"] = None
         WELCOME_DATA["buttons"] = None
+        WELCOME_DATA["media_type"] = "photo"
         
         await event.edit("🗑️ Welcome message cleared.")
 
@@ -262,6 +286,7 @@ def setup(ether, db, owner_id):
         welcome_text = welcome_config.get("text") or DEFAULT_WELCOME_TEXT
         welcome_image = welcome_config.get("image") or DEFAULT_WELCOME_IMAGE
         welcome_buttons = welcome_config.get("buttons") or DEFAULT_WELCOME_BUTTONS
+        welcome_media_type = welcome_config.get("media_type") or "photo"
         
         async def send_welcome(text: str) -> None:
             try:
@@ -270,6 +295,8 @@ def setup(ether, db, owner_id):
                     
                     WELCOME_DATA["text"] = text
                     WELCOME_DATA["buttons"] = welcome_buttons
+                    WELCOME_DATA["image"] = welcome_image
+                    WELCOME_DATA["media_type"] = welcome_media_type
                     
                     try:
                         results = await ether.inline_query(bot_username, "welcome")
