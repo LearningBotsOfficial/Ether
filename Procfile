@@ -1,1 +1,1 @@
-worker: /usr/local/bin/uv run main.py
+worker: uv run main.py

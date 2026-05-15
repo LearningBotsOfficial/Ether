@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+RUN pip install --no-cache-dir uv
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -37,5 +37,5 @@ RUN mkdir -p /app/media /app/sessions /app/logs && \
 VOLUME ["/app/media", "/app/sessions", "/app/logs"]
 
 # Set the default command to run the application using uv run
-CMD ["/usr/local/bin/uv", "run", "main.py"]
+CMD ["uv", "run", "main.py"]
 
