@@ -32,7 +32,7 @@ logger = get_logger("EtherMongo")
 class EtherMongo:
     
     def __init__(self):
-        self.client: AsyncMongoClient = None
+        self.client: AsyncIOMotorClient = None
         self.db = None
     
     async def connect(self) -> bool:
@@ -41,7 +41,7 @@ class EtherMongo:
             return False
         
         try:
-            self.client = AsyncMongoClient(
+            self.client = AsyncIOMotorClient(
                 Config.MONGO_URI,
                 serverSelectionTimeoutMS=5000,
                 retryWrites=True,
