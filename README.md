@@ -15,7 +15,21 @@
 
 ---
 
-[Features](#features) • [Structure](#repository-structure) • [Configuration](#configuration) • [Deployment](#deployment-options) • [Commands](#command-reference) • [Development](#plugin-development) • [Contributors](#contributors)
+## Repository Statistics
+
+<p align="center">
+  <img src="https://metrics.lecoq.io/LearningBotsOfficial?template=classic&base=header,activity,community,repositories,metadata&languages=1&languages.limit=8&languages.threshold=0%25&theme=radical" width="100%" alt="GitHub Metrics" />
+</p>
+
+<p align="center">
+  <img src="https://github-profile-trophy.vercel.app/?username=LearningBotsOfficial&theme=tokyonight&margin-w=15&no-bg=true" alt="GitHub Trophies" />
+</p>
+
+<img src="https://github-readme-activity-graph.vercel.app/graph?username=LearningBotsOfficial&repo=Ether&theme=tokyo-night&bg_color=1a1b27&color=73daca&line=73daca&point=f7768e&area=true&hide_border=true" width="100%" alt="Activity Graph" />
+
+---
+
+[Features](#key-features) • [Structure](#repository-structure) • [Configuration](#configuration) • [Deployment](#deployment-options) • [Commands](#command-reference) • [Development](#plugin-development) • [Contributors](#contributors)
 
 ---
 
@@ -73,7 +87,7 @@ Ether is built on a modern, high-performance stack designed for low latency and 
 | [PyMongo Async](https://www.mongodb.com/docs/drivers/pymongo/) | Native asynchronous driver for MongoDB |
 | [FastAPI](https://fastapi.tiangolo.com/) | High-performance web framework for health monitoring |
 | [Uvicorn](https://www.uvicorn.org/) | ASGI server for production-grade web service |
-| [uvloop](https://github.com/MagicStack/uvloop) | Ultra-fast asyncio event loop (Linux only) |
+| [uv](https://github.com/astral-sh/uv) | Ultra-fast Python package installer and resolver |
 | [Docker](https://www.docker.com/) | Containerization and environment isolation |
 | [python-dotenv](https://github.com/theskumar/python-dotenv) | Environment variable management |
 
@@ -186,16 +200,18 @@ docker-compose up -d --build
 #### 5. Manual Setup (Linux / VPS)
 For advanced users who want full control over the environment.
 ```bash
-# Update system & install dependencies
-sudo apt update && sudo apt install python3 python3-pip python3-venv git -y
+# Update system & install git
+sudo apt update && sudo apt install git -y
+
+# Install uv (Recommended)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Setup project
 git clone https://github.com/LearningBotsOfficial/Ether.git && cd Ether
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 
 # Run the bot
-python3 main.py
+uv run main.py
 ```
 
 ---

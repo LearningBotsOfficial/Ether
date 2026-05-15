@@ -1,0 +1,18 @@
+[project]
+name = "ether"
+version = "0.1.0"
+description = "Ether Userbot: The Next-Gen Modular Telegram Framework"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.13.5",
+    "fastapi>=0.136.1",
+    "psutil>=7.2.2",
+    "pymongo[srv]>=4.13.0",
+    "python-dotenv>=1.0.1",
+    "telethon>=1.43.0",
+    "uvicorn[standard]>=0.47.0",
+]
+
+[tool.uv]
+package = false
