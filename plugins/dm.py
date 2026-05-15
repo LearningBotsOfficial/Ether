@@ -259,6 +259,9 @@ def setup(ether, db, owner_id):
     
     @ether.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
     async def dm_handler(event):
+        
+        # 🔥 DEBUG LOG
+        logger.info(f"DM PROTECTION CHECK FROM: {event.sender_id}")
 
         # Check if sender is a bot - skip all processing for bots
         if event.sender and event.sender.bot:
@@ -315,21 +318,19 @@ def setup(ether, db, owner_id):
         
         if not user:
             await dm_service.create_user(user_id)
-            await send_welcome(welcome_text)
-            return
-        
-        if user.get("blocked"):
-            try:
-                await ether(BlockRequest(user_id))
-            except Exception as e:
-                logger.error(f"Block error for {user_id}: {e}")
-            return
-        
-        if user.get("allowed"):
-            await dm_service.increment_message_count(user_id)
-            return
+        else:
+            if user.get("blocked"):
+                try:
+                    await ether(BlockRequest(user_id))
+                except Exception as e:
+                    logger.error(f"Block error for {user_id}: {e}")
+                return
+            
+            if user.get("allowed"):
+                await dm_service.increment_message_count(user_id)
+                return
 
-        # If they reach here, they exist but aren't allowed/blocked yet.
-        # We silently ignore their subsequent messages until allowed.
-        return
+        # If they reach here, they are not allowed/blocked yet.
+        # Send welcome message every time as requested.
+        await send_welcome(welcome_text)
     
