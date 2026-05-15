@@ -84,6 +84,8 @@ def setup(ether, db, owner_id):
         if event.sender_id != owner_id:
             return
     
+        settings = await shield.get(owner_id)
+        
         user_id = None
         if event.is_reply:
             reply = await event.get_reply_message()
@@ -92,10 +94,7 @@ def setup(ether, db, owner_id):
             user_id = event.chat_id
             
         if not user_id or user_id == owner_id:
-            await event.reply("<blockquote><b>Warning:</b> To allow a user, reply to their message or use this command in their DM.</blockquote>")
             return
-    
-        settings = await shield.get(owner_id)
     
         allowed = settings.get("allowed", [])
     
@@ -119,6 +118,8 @@ def setup(ether, db, owner_id):
         if event.sender_id != owner_id:
             return
     
+        settings = await shield.get(owner_id)
+        
         user_id = None
         if event.is_reply:
             reply = await event.get_reply_message()
@@ -127,10 +128,7 @@ def setup(ether, db, owner_id):
             user_id = event.chat_id
             
         if not user_id or user_id == owner_id:
-            await event.reply("<blockquote><b>Warning:</b> To disallow a user, reply to their message or use this command in their DM.</blockquote>")
             return
-    
-        settings = await shield.get(owner_id)
     
         allowed = settings.get("allowed", [])
     
