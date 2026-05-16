@@ -4,22 +4,29 @@ services:
     env: docker
     autoDeploy: false
     plan: free
-    region: oregon
     healthCheckPath: /
+
     envVars:
       - key: API_ID
         sync: false
+
       - key: API_HASH
         sync: false
+
       - key: OWNER_ID
         sync: false
+
       - key: BOT_TOKEN
         sync: false
+
       - key: MONGO_URI
         sync: false
+
       - key: WEB_SERVICE
         value: "true"
+
       - key: SESSION_NAME
         value: "etheruserbot"
+
       - key: PORT
         value: "10000"
