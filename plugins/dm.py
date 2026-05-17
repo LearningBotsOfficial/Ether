@@ -400,7 +400,9 @@ def setup(ether, db, owner_id):
 
         if not user:
             await dm_service.create_user(user_id)
-        else:
+            user = await dm_service.get_user(user_id)
+
+        if user:
             if user.get("blocked"):
                 try:
                     await ether(BlockRequest(user_id))
@@ -412,5 +414,25 @@ def setup(ether, db, owner_id):
                 await dm_service.increment_message_count(user_id)
                 return
 
-        # Not allowed or blocked — send welcome every time
-        await send_welcome(welcome_text)
+        # Increment warning count
+        warns = await dm_service.increment_warn(user_id)
+        max_warns = await dm_service.get_max_warns(user_id, owner_id)
+
+        # Block if max warns exceeded
+        if warns >= max_warns:
+            await dm_service.block_user(user_id)
+            try:
+                await ether(BlockRequest(user_id))
+            except Exception as e:
+                logger.error(f"Block error for {user_id}: {e}")
+            await event.respond("<blockquote>⛔ <b>You have been blocked</b> for spamming.</blockquote>", parse_mode='html')
+            return
+
+        # Append warning message to the welcome text
+        warning_msg = f"\n\n⚠️ <b>Warning {warns}/{max_warns}:</b> Please wait for a reply. Spamming will result in a block."
+        if "</blockquote>" in welcome_text:
+            final_text = welcome_text.replace("</blockquote>", f"{warning_msg}</blockquote>")
+        else:
+            final_text = welcome_text + warning_msg
+
+        await send_welcome(final_text)

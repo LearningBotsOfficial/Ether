@@ -22,6 +22,7 @@
 from telethon import events
 from utils.logger import get_logger
 from services.dm_shield_service import DMShieldService
+from services.dm_service import DMService
 from config.config import Config
 
 logger = get_logger("DMShield")
@@ -30,6 +31,7 @@ logger = get_logger("DMShield")
 def setup(ether, db, owner_id):
 
     shield = DMShieldService(db)
+    dm_service = DMService(db)
 # ============================================
 # Dm filter
 # ============================================
@@ -41,6 +43,16 @@ def setup(ether, db, owner_id):
     
         if event.sender_id == owner_id:
             return
+
+        # Skip bots
+        if event.sender and getattr(event.sender, 'bot', False):
+            return
+        try:
+            sender = await event.get_sender()
+            if sender and getattr(sender, 'bot', False):
+                return
+        except Exception:
+            pass
     
         settings = await shield.get(owner_id)
     
@@ -51,10 +63,19 @@ def setup(ether, db, owner_id):
         if not settings.get("enabled"):
             return
     
-        # Check if sender is in allowed list (whitelist)
-        allowed = settings.get("allowed", [])
-        if event.sender_id in allowed:
+        # Check if sender is in allowed list (whitelist) via DMService
+        user = await dm_service.get_user(event.sender_id)
+        if user and user.get("allowed"):
             logger.info(f"User {event.sender_id} is allowed, skipping filter")
+            return
+
+        # Block unauthorized media from unknown users
+        if event.message.media and not (user and user.get("message_count", 0) > 2):
+            try:
+                await event.delete()
+                logger.info(f"Shield: Deleted unauthorized media from {event.sender_id}")
+            except Exception as e:
+                logger.error(f"DM media delete failed: {e}")
             return
     
         text = event.raw_text or ""
@@ -84,8 +105,6 @@ def setup(ether, db, owner_id):
         if event.sender_id != owner_id:
             return
     
-        settings = await shield.get(owner_id)
-        
         user_id = None
         if event.is_reply:
             reply = await event.get_reply_message()
@@ -96,15 +115,13 @@ def setup(ether, db, owner_id):
         if not user_id or user_id == owner_id:
             return
     
-        allowed = settings.get("allowed", [])
+        user = await dm_service.get_user(user_id)
     
-        if user_id in allowed:
+        if user and user.get("allowed"):
             await event.reply(f"<blockquote><b>Identity Status:</b> User {user_id} is already in the allowed list.</blockquote>")
             return
         
-        allowed.append(user_id)
-        settings["allowed"] = allowed
-        await shield.save(owner_id, settings)
+        await dm_service.allow_user(user_id)
     
         await event.reply(f"<blockquote><b>Access Granted:</b> User {user_id} is now ALLOWED in DM Shield</blockquote>")
     
@@ -118,8 +135,6 @@ def setup(ether, db, owner_id):
         if event.sender_id != owner_id:
             return
     
-        settings = await shield.get(owner_id)
-        
         user_id = None
         if event.is_reply:
             reply = await event.get_reply_message()
@@ -130,15 +145,13 @@ def setup(ether, db, owner_id):
         if not user_id or user_id == owner_id:
             return
     
-        allowed = settings.get("allowed", [])
+        user = await dm_service.get_user(user_id)
     
-        if user_id not in allowed:
+        if not user or not user.get("allowed"):
             await event.reply(f"<blockquote><b>Identity Status:</b> User {user_id} is not in the allowed list.</blockquote>")
             return
         
-        allowed.remove(user_id)
-        settings["allowed"] = allowed
-        await shield.save(owner_id, settings)
+        await dm_service.disallow_user(user_id, owner_id)
     
         await event.reply(f"<blockquote><b>Access Revoked:</b> User {user_id} is now REMOVED from allowed list</blockquote>")
     

@@ -37,48 +37,7 @@ def setup(ether, db, owner_id):
     shield_service = DMShieldService(db)
 
 
-    # 2. Advanced Anti-Spam System
-    @ether.on(events.NewMessage(incoming=True))
-    async def anti_spam_handler(event):
-        if not event.is_private:
-            return
-
-        user_id = event.sender_id
-        if user_id == owner_id:
-            return
-
-        # Check Whitelist
-        user_data = await dm_service.get_user(user_id)
-        if user_data and user_data.get("allowed"):
-            return
-
-        now = time.time()
-        
-        # --- PART B: Link/Media Shield for Unknown Users ---
-        shield_settings = await shield_service.get(owner_id)
-        
-        is_spammy = False
-        reason = ""
-        if shield_settings.get("enabled"):
-            text = event.message.message or ""
-
-            if shield_settings.get("link") and shield_service.has_link(text):
-                is_spammy = True
-                reason = "Link detected"
-            elif shield_settings.get("username") and shield_service.has_username(text):
-                is_spammy = True
-                reason = "Username mention"
-            elif event.message.media and not (user_data and user_data.get("message_count", 0) > 2):
-                is_spammy = True
-                reason = "Unauthorized media"
-
-        if is_spammy:
-            try:
-                await event.delete()
-                logger.info(f"Silent Shield: Deleted {reason} from {user_id}")
-            except Exception as e:
-                logger.error(f"Spam shield delete error: {e}")
-            return
+    # 2. Advanced Anti-Spam System (Moved to dm_shield.py)
 
     # 3. Privacy Commands
 
