@@ -2,30 +2,44 @@ services:
   - type: web
     name: ether-userbot
     runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
+    region: oregon
 
     autoDeploy: false
 
+    # Use root endpoint for health checks (always available)
     healthCheckPath: /
 
     envVars:
+      # Telegram API Credentials (Required - Get from my.telegram.org)
       - key: API_ID
         sync: false
 
       - key: API_HASH
         sync: false
 
+      # Owner Configuration (Required - Your Telegram User ID)
       - key: OWNER_ID
         sync: false
 
+      # Bot Token (Required - Get from @BotFather)
       - key: BOT_TOKEN
         sync: false
 
+      # Database (Required - MongoDB connection string)
       - key: MONGO_URI
         sync: false
 
+      # Port (Render will override with dynamic port)
       - key: PORT
         value: "10000"
 
+      # Enable web service for health checks
       - key: WEB_SERVICE
         value: "true"
+
+      # Optional: Debug mode
+      - key: DEBUG
+        value: "false"

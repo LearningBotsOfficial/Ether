@@ -1,29 +1,59 @@
-# Version Control
-.git/
-.gitignore
-
-# Environment files
-.env
-.env.*
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-venv/
-env/
+.Python
 .venv/
+venv/
+ENV/
+env/
 
-# Session Data & DB
-*.session
-*.session-journal
-sessions/
-media/
-logs/
-
-# IDE & OS
+# IDE
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Sessions (will be stored in MongoDB)
+*.session
+*.session-journal
+
+# Media
+media/
+
+# Environment
+.env
+.env.local
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+docker-compose.yml
+
+# Lock files
+ether.lock
+
+# Tests
+tests/
+test_*.py
+*_test.py
+
+# Coverage
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
