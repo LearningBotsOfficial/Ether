@@ -87,7 +87,6 @@ Ether is built on a modern, high-performance stack designed for low latency and 
 | [PyMongo Async](https://www.mongodb.com/docs/drivers/pymongo/) | Native asynchronous driver for MongoDB |
 | [FastAPI](https://fastapi.tiangolo.com/) | High-performance web framework for health monitoring |
 | [Uvicorn](https://www.uvicorn.org/) | ASGI server for production-grade web service |
-| [uv](https://github.com/astral-sh/uv) | Ultra-fast Python package installer and resolver |
 | [Docker](https://www.docker.com/) | Containerization and environment isolation |
 | [python-dotenv](https://github.com/theskumar/python-dotenv) | Environment variable management |
 
@@ -200,16 +199,8 @@ docker-compose up -d --build
 #### 5. Manual Setup (Linux / VPS / Windows)
 For users who want full control over the environment.
 
-1. **Install uv**
-   If you haven't installed `uv` on your server yet:
-   - **Linux/macOS:**
-     ```bash
-     curl -LsSf https://astral.sh/uv/install.sh | sh
-     ```
-   - **Windows:**
-     ```powershell
-     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-     ```
+1. **Install Python 3.11+**
+   Make sure you have Python 3.11 or higher installed on your system.
 
 2. **Prepare the Project**
    Clone your repository and enter the directory:
@@ -219,14 +210,19 @@ For users who want full control over the environment.
    ```
 
 3. **Setup the Environment**
-   Instead of creating a venv and activating it manually, let `uv` handle everything:
+   Create a virtual environment and install dependencies:
    ```bash
-   uv sync
+   python -m venv .venv
+   
+   # Activate the virtual environment
+   # On Linux/macOS:
+   source .venv/bin/activate
+   # On Windows:
+   .venv\Scripts\activate
+   
+   # Install dependencies
+   pip install -r requirements.txt
    ```
-   This command will:
-   - Check if you have the correct Python version (defined in `.python-version` or `pyproject.toml`). If not, it will automatically download it.
-   - Create a `.venv` directory.
-   - Install all dependencies exactly as defined in `uv.lock`.
 
 4. **Configure Environment Variables**
    Copy the example environment file and edit it with your credentials:
@@ -245,30 +241,33 @@ For users who want full control over the environment.
 
 ### Managing Dependencies & Upgrading
 
-`uv` uses a lockfile (`uv.lock`) to ensure that your environment is always reproducible.
-
 #### Adding or Removing Packages
 To add a new library:
 ```bash
-uv add <package-name>
+pip install <package-name>
+# Then update requirements.txt
+pip freeze > requirements.txt
 ```
 To remove a library:
 ```bash
-uv remove <package-name>
+pip uninstall <package-name>
+# Then update requirements.txt
+pip freeze > requirements.txt
 ```
 
 #### Upgrading All Packages
-To upgrade all dependencies to their latest compatible versions and update the `uv.lock` file:
+To upgrade all dependencies to their latest versions:
 ```bash
-uv lock --upgrade
+pip install --upgrade -r requirements.txt
+pip freeze > requirements.txt
 ```
 
 #### Syncing Environment
-Whenever you pull new changes from GitHub that include an updated `uv.lock`, simply run:
+Whenever you pull new changes from GitHub that include an updated `requirements.txt`, simply run:
 ```bash
-uv sync
+pip install -r requirements.txt
 ```
-This ensures your local `.venv` matches the project's requirements perfectly.
+This ensures your local `.venv` matches the project's requirements.
 
 ---
 

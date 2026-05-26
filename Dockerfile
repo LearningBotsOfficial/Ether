@@ -1,38 +1,30 @@
 FROM python:3.11-slim
 
-# Install uv
-RUN pip install --no-cache-dir uv
-
-# Environment variables
+# Prevent Python from writing pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH"
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# System packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies and security updates in a single layer
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     git \
     gcc \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip
 
-# Copy dependency files first
-COPY pyproject.toml uv.lock ./
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies
-RUN uv sync --frozen --no-install-project
-
-# Copy project files
+# Copy application code
 COPY . .
 
-# Create folders
-RUN mkdir -p /app/media /app/sessions /app/logs
+# Create necessary directories
+RUN mkdir -p media sessions logs
 
-# Expose Render port
+# Expose port
 EXPOSE 10000
 
-# Start app
-CMD ["python3", "main.py"]
+# Run the application
+CMD ["python", "main.py"]
