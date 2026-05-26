@@ -19,14 +19,14 @@
 #  Thank you for respecting open-source development.
 # =============================================================================
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from config.config import Config
 from utils.logger import get_logger
 
 logger = get_logger("EtherMongo")
 
 # ============================================
-# MongoDB Connection
+# MongoDB Connection (PyMongo Native Async)
 # ============================================
 
 class EtherMongo:

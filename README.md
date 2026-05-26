@@ -331,7 +331,7 @@ Ether is built to be modular. You can add new features by creating a `.py` file 
 def setup(ether, db, owner_id):
     """
     ether: The Telethon TelegramClient instance.
-    db: The MongoDB motor database instance.
+    db: The PyMongo async database instance.
     owner_id: The numeric ID of the bot owner.
     """
 ```
